@@ -64,7 +64,7 @@ ran_delays = np.array(list({packet['id']: get_ran_delay(packet)
 if not os.path.exists(PLOTS_DIR):
     os.makedirs(PLOTS_DIR)
 
-# skip first and last packets
+# skip the extreme packets
 SKIP_FIRST = 1200
 SKIP_LAST = 100
 
