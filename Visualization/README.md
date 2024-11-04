@@ -3,7 +3,7 @@
 Using the code in [meas-visualization](https://github.com/gourav-prateek-sharma/meas-visualization).
 
 Generally the packet transmission could be like:
-![protocol stack and timestamp](23fcb885d0c8a1cd0c2de68f4459943c.png)
+![protocol stack and timestamp](readmefig1.png)
 
 - About the data:
 
