@@ -11,8 +11,6 @@ import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.tsa.stattools import acf
-import seaborn as sns
-
 
 
 if not os.getenv('DEBUG'):
@@ -840,7 +838,7 @@ def plot_multiple_ccdf(data_dict, ax):
     ax.legend()
 
 # Function to plot CCDFs from multiple meas files on the same axes
-def plot_multiple_ccdf_per_delay_type(delay_values_per_meas, ax, delay_type_label='_', labels=[], outlier=35, x_lim=60):
+def plot_multiple_ccdf_per_delay_type(delay_values_per_meas, delay_type_label, ax, labels=[], outlier=35, x_lim=60):
     max_delay = -np.inf
 
     for idx, data in enumerate(delay_values_per_meas):
@@ -860,48 +858,43 @@ def plot_multiple_ccdf_per_delay_type(delay_values_per_meas, ax, delay_type_labe
     ax.set_title(f'CCDF of {delay_type_label}')
 
 
-def plot_multiple_histograms(values_per_meas, ax, labels=[], y_log=True, delay_type_label='_', outlier=None):
+def plot_multiple_histograms(values_per_meas, ax, labels=[], y_log=True, bins=10, outlier=None, width=0.3, xlabel="Value",ylabel="Normalized Frequency",title=""):
     """
     Plots histograms for multiple arrays side by side on the same axes with normalized frequency.
 
     :param values_per_meas: List of arrays to plot
     :param labels: List of labels for each array
     :param ax: Axes object to plot on
-    :param y_log: Boolean to set y-axis to log scale if True
+    :param bins: Number of bins for the histogram
     :param outlier: Cap value for outliers (optional)
+    :param width: Width of each bar as a fraction of the bin width
     """
     # Cap values at the outlier threshold if specified
     if outlier is not None:
         values_per_meas = [np.minimum(data, outlier) for data in values_per_meas]
     
-    # Determine bin edges based on the range across all arrays, with bins as max - min + 1
-    min_value = int(min(np.min(data) for data in values_per_meas))
-    max_value = int(max(np.max(data) for data in values_per_meas))
-    bins = np.arange(min_value, max_value + 2)  # +2 to include max_value in bin centers
-    bin_width = 1  # Each bin will represent an integer value
-    width_total = 0.50
+    # Determine bin edges based on the range across all arrays
+    min_value = min(np.min(data) for data in values_per_meas)
+    max_value = max(np.max(data) for data in values_per_meas)
+    bin_edges = np.linspace(min_value, max_value, bins + 1)
+    
     # Plot each array as a separate bar chart, offset by `width`
     for idx, (data, label) in enumerate(zip(values_per_meas, labels)):
-        hist, _ = np.histogram(data, bins=bins)
+        hist, _ = np.histogram(data, bins=bin_edges)
         hist = hist / len(data)  # Normalize frequency by the length of the data
-        bin_centers = bins[:-1]  # Use each integer as the bin center
-
-        # Offset each bar by its index for side-by-side effect, with width adjusted for clarity
-        width = width_total*bin_width / (len(values_per_meas) + 0)  # Adjust width for multiple series
-        offset = 0.5*(width)+(len(values_per_meas)-1)/2*width if len(values_per_meas)%2==0 else (len(values_per_meas)-1)/2*width
-        ax.bar(bin_centers + idx * width - offset, 
-                hist, width=width, alpha=0.6, label=label, edgecolor='black')
-        # ax.bar(bin_centers + idx * width - (width * len(values_per_meas) / 4), 
-        #        hist, width=width, alpha=0.6, label=label, edgecolor='black')
+        bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+        
+        # Offset each bar by its index for side-by-side effect
+        ax.bar(bin_centers + idx * width - (width * len(values_per_meas) / 2), 
+               hist, width=width, alpha=0.6, label=label, edgecolor='black')
     
-    ax.set_xlabel('Value')
-    ax.set_ylabel('Normalized Frequency')
-    ax.set_xticks(bins)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     if y_log:
         ax.set_yscale('log')
     ax.grid(True)
     ax.legend()
-    ax.set_title(f'Histogram of {delay_type_label}')
 
 
 def calculate_correlation(vector1, vector2):

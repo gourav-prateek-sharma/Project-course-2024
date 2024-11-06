@@ -32,8 +32,7 @@ def get_buffer_len(packet, bsrupd_sorted_dict, slots_per_frame=20, slots_duratio
         return bsrupd_sorted_dict[bsrupd_sorted_dict.keys()[idx]]['len']
     else:
         return None
-
-# delay between ip.in and first segment mac.in  
+    
 def get_queueing_delay(packet):
     min_delay = np.inf
     for rlc_seg in packet['rlc.attempts']:
@@ -43,25 +42,6 @@ def get_queueing_delay(packet):
             logger.error(f"Packet {packet['id']} Either mac.in_t, ip.in_t or rlc.attempts not present")
             return None
     return min_delay*1000
-
-
-# delay between ip.in and first segment mac.in  - frame alignment delay
-def get_queueing_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20, slots_duration_ms=0.5):
-    queueing_delay = get_queueing_delay(packet)
-    frame_alignment_delay = get_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20, slots_duration_ms=0.5)
-    if queueing_delay!=None and frame_alignment_delay!=None and queueing_delay>frame_alignment_delay:
-        return queueing_delay-frame_alignment_delay
-    else:
-        return None
-
-# delay between ip.in and first segment mac.in  - scheduling delay
-def get_queueing_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
-    queueing_delay = get_queueing_delay(packet)
-    scheduling_delay = get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
-    if queueing_delay!=None and scheduling_delay!=None and queueing_delay>scheduling_delay:
-        return queueing_delay-scheduling_delay
-    else:
-        return None
             
 # return ran delay in millisecons
 def get_ran_delay(packet):
@@ -171,23 +151,7 @@ def get_segmentation_delay(packet):
     retx_delay = get_retx_delay(packet)
     tx_delay =  get_tx_delay(packet)
     if tx_delay!=None and retx_delay!=None and packet['rlc.in_t']!=None and packet['rlc.out_t']!=None:
-        return (packet['rlc.out_t']-packet['rlc.in_t'])*1000-tx_delay-retx_delay
-    else:
-        return None
-
-def get_segmentation_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20, slots_duration_ms=0.5):
-    segmentation_delay = get_segmentation_delay(packet)
-    frame_alignment_delay = get_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20, slots_duration_ms=0.5)
-    if segmentation_delay!=None and frame_alignment_delay!=None and segmentation_delay>=frame_alignment_delay:
-        return segmentation_delay-frame_alignment_delay
-    else:
-        return None
-    
-def get_segmentation_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
-    segmentation_delay = get_segmentation_delay(packet)
-    scheduling_delay = get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
-    if segmentation_delay!=None and scheduling_delay!=None and segmentation_delay>=scheduling_delay:
-        return segmentation_delay-scheduling_delay
+        return packet['rlc.out_t']-packet['rlc.in_t']-tx_delay-retx_delay
     else:
         return None
                         

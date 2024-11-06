@@ -7,3 +7,6 @@ Resources, gathered results, etc.
 
 Meeting minutes, discussion, etc.
 [OneNote notebook](https://kth-my.sharepoint.com/personal/gpsharma_ug_kth_se/_layouts/15/Doc.aspx?sourcedoc={d9e5757b-d71d-4ba1-be3b-ad1e7413de21})
+
+Some data files (e.g. /s47) are too large to upload. They can be fetched through:
+[Excel sheet(Scenario 1 (SDR-SDR))](https://kth-my.sharepoint.com/:x:/g/personal/gpsharma_ug_kth_se/ER2ASCHPNChEhX3M1HLk6UUBifFtuyaCixHHpVqFougQmg?e=zDOBMY)
