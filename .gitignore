@@ -1,5 +1,7 @@
-
-/Visualization/data/s49
+/Visualization/data/s49/jsons/
+/Visualization/data/s49/ue/
+/Visualization/data/s49/upf/
+/Visualization/data/s49/gnb/
 Visualization/__pycache__/data_helpers.cpython-312.pyc
 Visualization/__pycache__/decomp.cpython-312.pyc
 /Visualization/__pycache__
