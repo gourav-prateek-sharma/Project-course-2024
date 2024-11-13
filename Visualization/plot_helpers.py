@@ -14,7 +14,6 @@ from statsmodels.tsa.stattools import acf
 import seaborn as sns
 
 
-
 if not os.getenv('DEBUG'):
     logger.remove()
     logger.add(sys.stdout, level="INFO")
@@ -717,7 +716,7 @@ def plot_packet_tree_from_ueipids(ue_ipid_list : list, ue_ip_packets_df, ue_iprl
 #           # this rlc segment could be nacked, check it TODO
 #           # plot the rlc segment line
 #           ax.plot([branch0_x, branch1_x], [branch0_y, branch1_y], color='red')
-#           continue 
+#           continue
 #         else:
 #           # plot the rlc segment line
 #           ax.plot([branch0_x, branch1_x], [branch0_y, branch1_y], color='blue')
@@ -743,7 +742,7 @@ def plot_packet_tree_from_ueipids(ue_ipid_list : list, ue_ip_packets_df, ue_iprl
 #                         packet['rlc.attempts'][i]['mac.out_t']-packet['rlc.attempts'][i]['mac.attempts'][j]['phy.out_t']
 #                     )*1000
 #                 branch4_y = branch3_y + 1
-#                 ax.plot([branch3_x, branch4_x], [branch3_y, branch4_y], color='orange') 
+#                 ax.plot([branch3_x, branch4_x], [branch3_y, branch4_y], color='orange')
 
 #             else:
 #                 # only ue side, in grey
@@ -751,15 +750,15 @@ def plot_packet_tree_from_ueipids(ue_ipid_list : list, ue_ip_packets_df, ue_iprl
 #                         packet['rlc.attempts'][i]['mac.attempts'][j]['phy.in_t']-packet['rlc.attempts'][i]['mac.in_t']
 #                     )*1000
 #                 branch2_y = branch1_y + 1
-#                 ax.plot([branch1_x, branch2_x], [branch1_y, branch2_y], color='red') 
+#                 ax.plot([branch1_x, branch2_x], [branch1_y, branch2_y], color='red')
 
 #     branch5_x = branch4_x + (packet['ip.out_t']-packet['rlc.out_t'])*1000
 #     branch5_y = branch4_y + 1
-#     ax.plot([branch4_x, branch5_x], [branch4_y, branch5_y], color='green')   
+#     ax.plot([branch4_x, branch5_x], [branch4_y, branch5_y], color='green')
 
 #     return packet['ip.in_t']
 
-            
+
 def ccdf(data):
     sorted_data = np.sort(data)
     ccdf_values = 1. - np.arange(1, len(data) + 1) / len(data)
@@ -789,7 +788,7 @@ def plot_ccdfs(latencies, xlim=[5,12], ylim=[0.0001, 1], markers=[], linestyles=
     plt.savefig(filename) 
     plt.show()
 
-def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50):
+def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50, ax=None):
     """
     Plots the Complementary Cumulative Distribution Function (CCDF) of the given delays.
     
@@ -801,7 +800,9 @@ def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50):
     Returns:
         fig, ax: The figure and axis objects of the plot.
     """
-    fig, ax = plt.subplots(figsize=figsize)
+    fig=None
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
     delays = delays[delays<outlier]
     # Sort the delay values and calculate the CCDF
     sorted_delays = np.sort(delays)
@@ -809,31 +810,35 @@ def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50):
     max_delay = sorted_delays[-1]
 
     # Plot the CCDF
-    ax.plot(sorted_delays, ccdf, linestyle='-', linewidth=4, label=label)
-    
+    ax.plot(sorted_delays, ccdf, linestyle='-', linewidth=2, label=label)
+
     # Set the y-axis to a logarithmic scale
     ax.set_yscale('log')
-    
+
     # Label the axes
     ax.set_xlabel('Delay (ms)', fontsize=15)
     ax.set_ylabel('Probability', fontsize=15)
     ax.tick_params(axis='both', labelsize=16)
-    ax.set_xlim([-0.1, min(x_lim, max_delay+5)])
+    _, old_x_lim=ax.get_xlim()
+    new_x_lim=max(old_x_lim, max_delay)
+    ax.set_xlim([-0.1, min(x_lim, new_x_lim)])
+    ax.set_title(f'CCDF of {label}')
 
-    
     # Add grid and legend
-    ax.grid(True)
+    ax.grid(True,'minor')
     ax.legend()
-    
+
     return fig, ax
 
 # Function to plot multiple CCDFs on the same axes
-def plot_multiple_ccdf(data_dict, ax):
+def plot_multiple_ccdf(data_dict, ax, figsize=(8,5)):
+    if ax is None:
+        _, ax = plt.subplots(figsize=figsize)
     for label, data in data_dict.items():
         sorted_data = np.sort(data)
         ccdf = 1. - np.arange(1, len(sorted_data) + 1) / len(sorted_data)
-        ax.plot(sorted_data, ccdf, label=label)
-    
+        ax.plot(sorted_data, ccdf, linestyle='-', linewidth=2, label=label)
+
     ax.set_xlabel('Delay (ms)')
     ax.set_ylabel('CCDF')
     ax.grid(True)
@@ -847,9 +852,9 @@ def plot_multiple_ccdf_per_delay_type(delay_values_per_meas, ax, delay_type_labe
         delays = data[data<outlier]
         sorted_delays = np.sort(delays)
         ccdf = 1. - np.arange(1, len(sorted_delays) + 1) / len(sorted_delays)
-        ax.plot(sorted_delays, ccdf, label=labels[idx])
+        ax.plot(sorted_delays, ccdf, linestyle="-", linewidth=2,  label=labels[idx])
         max_delay = max(max_delay, sorted_delays[-1])
-    
+
     # Set the y-axis to a logarithmic scale
     ax.set_yscale('log')
     ax.set_xlim([-0.1, min(x_lim, max_delay)])
@@ -873,7 +878,7 @@ def plot_multiple_histograms(values_per_meas, ax, labels=[], y_log=True, delay_t
     # Cap values at the outlier threshold if specified
     if outlier is not None:
         values_per_meas = [np.minimum(data, outlier) for data in values_per_meas]
-    
+
     # Determine bin edges based on the range across all arrays, with bins as max - min + 1
     min_value = int(min(np.min(data) for data in values_per_meas))
     max_value = int(max(np.max(data) for data in values_per_meas))
@@ -891,15 +896,15 @@ def plot_multiple_histograms(values_per_meas, ax, labels=[], y_log=True, delay_t
         offset = 0.5*(width)+(len(values_per_meas)-1)/2*width if len(values_per_meas)%2==0 else (len(values_per_meas)-1)/2*width
         ax.bar(bin_centers + idx * width - offset, 
                 hist, width=width, alpha=0.6, label=label, edgecolor='black')
-        # ax.bar(bin_centers + idx * width - (width * len(values_per_meas) / 4), 
+        # ax.bar(bin_centers + idx * width - (width * len(values_per_meas) / 4),
         #        hist, width=width, alpha=0.6, label=label, edgecolor='black')
-    
+
     ax.set_xlabel('Value')
     ax.set_ylabel('Normalized Frequency')
     ax.set_xticks(bins)
     if y_log:
         ax.set_yscale('log')
-    ax.grid(True)
+    ax.grid(True, "minor")
     ax.legend()
     ax.set_title(f'Histogram of {delay_type_label}')
 
@@ -935,6 +940,6 @@ def plot_autocorr(delays, label, figsize=(10, 6), outlier=35, x_lim=100):
     ax.set_ylabel('Autocorrelation')
     ax.set_title(f'Autocorrelation of Delays - {label}')
     ax.set_xlim(0, min(x_lim, len(delays) - 1))
-    ax.grid(True)
+    ax.grid(True,'minor')
     
     return fig, ax

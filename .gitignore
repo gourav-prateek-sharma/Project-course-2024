@@ -1,2 +1,11 @@
 
 /Visualization/data/s49
+Visualization/__pycache__/data_helpers.cpython-312.pyc
+Visualization/__pycache__/decomp.cpython-312.pyc
+/Visualization/__pycache__
+*.pyc
+
+/Visualization/data/s39
+/Visualization/data/s24
+/Visualization/data/s40
+/Visualization/data/s39
