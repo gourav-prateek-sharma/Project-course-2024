@@ -24,7 +24,7 @@ def get_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20,
         return (sr_bsr_tx_sorted_list[idx]-packet['ip.in_t'])*1000
     else:
         return None
-    
+
 
 def get_buffer_len(packet, bsrupd_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
     idx=bsrupd_sorted_dict.bisect_right(packet['ip.in_t'])
@@ -33,7 +33,7 @@ def get_buffer_len(packet, bsrupd_sorted_dict, slots_per_frame=20, slots_duratio
     else:
         return None
 
-# delay between ip.in and first segment mac.in  
+# delay between ip.in and first segment mac.in
 def get_queueing_delay(packet):
     min_delay = np.inf
     for rlc_seg in packet['rlc.attempts']:
@@ -62,7 +62,7 @@ def get_queueing_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_
         return queueing_delay-scheduling_delay
     else:
         return None
-            
+
 # return ran delay in millisecons
 def get_ran_delay(packet):
     if packet.get('ip.out_t')!=None and packet.get('ip.in_t')!=None:
@@ -131,7 +131,7 @@ def get_retx_delay(packet):
 #     for rlc_seg in packet['rlc.attempts']:
 #         if rlc_seg['so']==0: # only check the first segment
 #             for mac_attempt in rlc_seg['mac.attempts']:
-#                 if mac_attempt['phy.in_t'] != None: 
+#                 if mac_attempt['phy.in_t'] != None:
 #                     phy_in_min_t = min(phy_in_min_t,  mac_attempt['phy.in_t'])
 #                     phy_in_max_t = max(phy_in_max_t, mac_attempt['phy.in_t'])
 #     if phy_in_min_t<np.inf and phy_in_max_t>-np.inf:
@@ -139,13 +139,13 @@ def get_retx_delay(packet):
 #     else:
 #         return None
 
- # tx delay of first mac attempt of first segment
+# tx delay of first mac attempt of first segment
 # def get_tx_delay(packet):
 #     for rlc_seg in packet['rlc.attempts']:
 #         for mac_attempt in rlc_seg['mac.attempts']:
 #              if mac_attempt.get('phy.in_t')!=None and mac_attempt.get('phy.out_t')!=None:
 #                  return (mac_attempt.get('phy.out_t')-mac_attempt.get('phy.in_t'))*1000
-                 
+
 # re transmission delay of the first rlc segment
 # def get_retx_delay(packet):
 #     max_phy_delay = 0
@@ -153,7 +153,7 @@ def get_retx_delay(packet):
 #         for mac_attempt in rlc_seg['mac.attempts']:
 #              if mac_attempt.get('phy.in_t')!=None and mac_attempt.get('phy.out_t')!=None:
 #                  pass
-             
+
 def get_tx_delay(packet):
     max_rlc_seg = get_max_rlc_seg(packet)
     max_delay = -np.inf
@@ -166,7 +166,7 @@ def get_tx_delay(packet):
         return max_delay*1000
     else:
         return None
-    
+
 def get_segmentation_delay(packet):
     retx_delay = get_retx_delay(packet)
     tx_delay =  get_tx_delay(packet)
@@ -182,7 +182,7 @@ def get_segmentation_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_lis
         return segmentation_delay-frame_alignment_delay
     else:
         return None
-    
+
 def get_segmentation_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
     segmentation_delay = get_segmentation_delay(packet)
     scheduling_delay = get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
@@ -190,7 +190,7 @@ def get_segmentation_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_
         return segmentation_delay-scheduling_delay
     else:
         return None
-                        
+
 def get_segments(packet):
     return len(set([rlc_seg['so'] for rlc_seg in packet['rlc.attempts']]))
 
@@ -207,6 +207,28 @@ def get_tb(packet, tb_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
         return tb_sorted_dict[tb_sorted_dict.keys()[idx]]
     else:
         return None
-    
+
 def get_rlc_reassembely_delay(packet):
     return (packet['ip.out_t']-packet['rlc.out_t'])*1000
+
+
+def get_tbs(packet, sched_sorted_dict, slots_duration_ms=0.5):
+    # Adjust packet arrival time by adding a processing delay
+    adjusted_time = (
+        packet["ip.in_t"] + PACKET_IN_DECISION_DELAY_MIN * slots_duration_ms * 0.001
+    )
+
+    # Find the smallest index where the key is strictly greater than the adjusted time
+    idx = sched_sorted_dict.bisect_right(adjusted_time)
+
+    # Check if the index is within bounds
+    if idx < len(sched_sorted_dict):
+        # Return the TBS value for the closest match after the adjusted packet time
+        if "tbs" in sched_sorted_dict[sched_sorted_dict.keys()[idx]]["cause"]:
+            result=sched_sorted_dict[sched_sorted_dict.keys()[idx]]["cause"]["tbs"]
+        else:
+            result=None
+        return result
+    else:
+        # Return None if there is no suitable TBS entry
+        return None
