@@ -803,7 +803,8 @@ def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50, ax=None):
     fig=None
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
-    delays = delays[delays<outlier]
+    if outlier is not None:
+        delays = delays[delays<outlier]
     # Sort the delay values and calculate the CCDF
     sorted_delays = np.sort(delays)
     ccdf = 1.0 - np.arange(1, len(sorted_delays) + 1) / len(sorted_delays)
@@ -926,20 +927,22 @@ def calculate_correlation(vector1, vector2):
     
     return correlation_coefficient
 
-def plot_autocorr(delays, label, figsize=(10, 6), outlier=35, x_lim=100):
-    # Cap delays at the outlier value
-    delays = np.minimum(delays, outlier)
-    
+def plot_autocorr(delay, label, figsize=(10, 6), outlier=35, x_lim=100, ax=None):
+    fig = None
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
+    # Cap delay at the outlier value
+    delay = np.minimum(delay, outlier)
+
     # Calculate autocorrelation up to x_lim lags or the length of the data, whichever is smaller
-    autocorr_values = acf(delays, nlags=min(x_lim, len(delays) - 1), fft=True)
-    
-    # Plotting the autocorrelation
-    fig, ax = plt.subplots(figsize=figsize)
+    autocorr_values = acf(delay, nlags=min(x_lim, len(delay) - 1), fft=True)
+
     ax.stem(range(len(autocorr_values)), autocorr_values)  # Adjust range to length of autocorr_values
     ax.set_xlabel('Lag')
     ax.set_ylabel('Autocorrelation')
-    ax.set_title(f'Autocorrelation of Delays - {label}')
-    ax.set_xlim(0, min(x_lim, len(delays) - 1))
+    ax.set_title(f'Autocorrelation of Delay - {label}')
+    ax.set_xlim(0, min(x_lim, len(delay) - 1))
     ax.grid(True,'minor')
-    
+
     return fig, ax

@@ -114,6 +114,7 @@ def get_retx_delay(packet):
         return get_retx_delay_seg(packet, max_rlc_seg)
     else:
         return None
+
     # for rlc_seg in packet['rlc.attempts']:
     #     if len(rlc_seg['mac.attempts'])>0 and get_retx_delay_seg(packet, rlc_seg)!=None:
     #         if get_retx_delay_seg(packet, rlc_seg) > max_delay:
@@ -231,4 +232,12 @@ def get_tbs(packet, sched_sorted_dict, slots_duration_ms=0.5):
         return result
     else:
         # Return None if there is no suitable TBS entry
+        return None
+
+
+def get_packet_size(packet):
+    if packet["len"] != None:
+        return packet["len"]
+    else:
+        logger.error(f"Packet {packet['id']} len not present")
         return None
