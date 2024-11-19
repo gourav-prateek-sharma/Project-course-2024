@@ -7,10 +7,15 @@ Visualization/__pycache__/decomp.cpython-312.pyc
 /Visualization/__pycache__
 *.pyc
 
-/Visualization/data/s39
+/Visualization/data/s39/jsons/
+/Visualization/data/s39/ue/
+/Visualization/data/s39/upf/
+/Visualization/data/s39/gnb/
 /Visualization/data/s24
-/Visualization/data/s40
-/Visualization/data/s39
+/Visualization/data/s40/jsons/
+/Visualization/data/s40/ue/
+/Visualization/data/s40/upf/
+/Visualization/data/s40/gnb/
 /Visualization/data/s54/jsons
 /Visualization/data/s54/gnb
 /Visualization/data/s54/ue
