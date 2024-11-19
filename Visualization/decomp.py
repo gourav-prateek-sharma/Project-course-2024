@@ -10,16 +10,71 @@ import numpy as np
 
 PACKET_IN_DECISION_DELAY_MIN = 2 # 2 slots delay between decision and in packet
 
-def get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
-    idx=sched_sorted_dict.bisect_right(packet['ip.in_t']+PACKET_IN_DECISION_DELAY_MIN*slots_duration_ms*0.001)
-    if idx < len(sched_sorted_dict):
-        schedule_ts = sched_sorted_dict[sched_sorted_dict.keys()[idx]]['schedule_ts']
-        return (schedule_ts-packet['ip.in_t'])*1000
+
+def get_scheduling_delay(
+    packet,
+    sched_decid_sorted_dict,
+    sched_sched_sorted_dict,
+    slots_per_frame=20,
+    slots_duration_ms=0.5,
+):
+    """
+    The moment IP packet gets prepared and starts to wait for sending
+            ↓
+        Scheduling Delay
+            ↓
+    The moment gNB UE is allowed to start sending data
+
+    """
+    adjusted_time = (
+        packet["ip.in_t"] + PACKET_IN_DECISION_DELAY_MIN * slots_duration_ms * 0.001
+    )
+    idx = sched_decid_sorted_dict.bisect_right(adjusted_time)
+
+    min_mac_in_t = min(
+            rlc_attempt["mac.in_t"]
+            for rlc_attempt in packet["rlc.attempts"]
+            if rlc_attempt["mac.in_t"] is not None and packet["rlc.attempts"] is not None
+        )
+
+    if idx < len(sched_decid_sorted_dict):
+        sched_entry = sched_decid_sorted_dict[sched_decid_sorted_dict.keys()[idx]]
+        schedule_ts = sched_entry["schedule_ts"]
+
+        while min_mac_in_t < schedule_ts:
+            idx=idx-1
+            sched_entry = sched_decid_sorted_dict[sched_decid_sorted_dict.keys()[idx]]
+            schedule_ts = sched_entry["schedule_ts"]
+
+        if idx >= 0:
+            result = (schedule_ts - packet["ip.in_t"]) * 1000
+            #print(f"min_mac_in_t ={min_mac_in_t}, schedule_ts = {schedule_ts}")
+        else:
+            result = None
+
+        return result
     else:
         return None
 
+
 def get_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_per_frame=20, slots_duration_ms=0.5):
     idx=sr_bsr_tx_sorted_list.bisect_right(packet['ip.in_t'])
+    """
+    The moment IP packet gets prepared and starts to wait for sending
+            ↓
+        frame_alignment_delay
+            ↓
+    The earlier one of
+        The moment UE sends the Buffer Status Report
+        The moment UE sends the Scheduling Request
+    ( A UE either has a Scheduling Grant or not, which grant available PUSCH for the UE
+      - if UE does not have a scheduling grant yet, it sends SR to ask gNB for grant
+        since it has no PUSCH resources, it can only use pre-assigned, dedicated, periodic PUCCH to send SR
+      - if it already has a scheduling grant, then it sends BSR to help gNB decide how many resources should be given
+        it can be triggered by periodic timer, or triggered by higher-priority data's arrival, or by the way when there is spare space in other packets )
+
+    frame_alignment_delay is part of the scheduling_delay!
+    """
     if idx < len(sr_bsr_tx_sorted_list):
         return (sr_bsr_tx_sorted_list[idx]-packet['ip.in_t'])*1000
     else:
@@ -35,6 +90,9 @@ def get_buffer_len(packet, bsrupd_sorted_dict, slots_per_frame=20, slots_duratio
 
 # delay between ip.in and first segment mac.in
 def get_queueing_delay(packet):
+    """
+    queueing: constraint of RRC, queueing in IP layer(L3)?
+    """
     min_delay = np.inf
     for rlc_seg in packet['rlc.attempts']:
         if rlc_seg.get('mac.in_t')!=None and packet.get('ip.in_t')!=None and packet.get('rlc.attempts')!=None:
@@ -55,12 +113,15 @@ def get_queueing_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, s
         return None
 
 # delay between ip.in and first segment mac.in  - scheduling delay
-def get_queueing_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
+def get_queueing_delay_wo_scheduling_delay(packet, sched_decid_sorted_dict, sched_sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
     queueing_delay = get_queueing_delay(packet)
-    scheduling_delay = get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
-    if queueing_delay!=None and scheduling_delay!=None and queueing_delay>scheduling_delay:
+    scheduling_delay = get_scheduling_delay(packet, sched_decid_sorted_dict,sched_sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
+    if queueing_delay!=None and scheduling_delay!=None and queueing_delay>=scheduling_delay:
         return queueing_delay-scheduling_delay
     else:
+        print(
+            f"!!!Log: queueing_delay = {queueing_delay}, scheduling_delay = {scheduling_delay}"
+        )
         return None
 
 # return ran delay in millisecons
@@ -77,11 +138,31 @@ def get_ran_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_list, slots_
     else:
         return None
 
-def get_ran_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
-    if get_ran_delay(packet)>0 and get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
-        return get_ran_delay(packet)-get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
+
+def get_ran_delay_wo_scheduling_delay(
+    packet,
+    sched_decid_sorted_dict,
+    sched_sched_sorted_dict,
+    slots_per_frame=20,
+    slots_duration_ms=0.5,
+):
+    if get_ran_delay(packet) > 0 and get_scheduling_delay(
+        packet,
+        sched_decid_sorted_dict,
+        sched_sched_sorted_dict,
+        slots_per_frame=20,
+        slots_duration_ms=0.5,
+    ):
+        return get_ran_delay(packet) - get_scheduling_delay(
+            packet,
+            sched_decid_sorted_dict,
+            sched_sched_sorted_dict,
+            slots_per_frame=20,
+            slots_duration_ms=0.5,
+        )
     else:
         return None
+
 
 def get_retx_delay_seg(packet, rlc_seg):
     max_delay, min_delay = -np.inf, np.inf
@@ -184,13 +265,21 @@ def get_segmentation_delay_wo_frame_alignment_delay(packet, sr_bsr_tx_sorted_lis
     else:
         return None
 
-def get_segmentation_delay_wo_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5):
+
+def get_segmentation_delay_wo_scheduling_delay(
+    packet,
+    sched_decid_sorted_dict,
+    sched_sched_sorted_dict,
+    slots_per_frame=20,
+    slots_duration_ms=0.5,
+):
     segmentation_delay = get_segmentation_delay(packet)
-    scheduling_delay = get_scheduling_delay(packet, sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
+    scheduling_delay = get_scheduling_delay(packet, sched_decid_sorted_dict,sched_sched_sorted_dict, slots_per_frame=20, slots_duration_ms=0.5)
     if segmentation_delay!=None and scheduling_delay!=None and segmentation_delay>=scheduling_delay:
         return segmentation_delay-scheduling_delay
     else:
         return None
+
 
 def get_segments(packet):
     return len(set([rlc_seg['so'] for rlc_seg in packet['rlc.attempts']]))
@@ -213,22 +302,41 @@ def get_rlc_reassembely_delay(packet):
     return (packet['ip.out_t']-packet['rlc.out_t'])*1000
 
 
-def get_tbs(packet, sched_sorted_dict, slots_duration_ms=0.5):
+def get_tbs(
+    packet, sched_decid_sorted_dict, sched_sched_sorted_dict, slots_duration_ms=0.5
+):
     # Adjust packet arrival time by adding a processing delay
     adjusted_time = (
         packet["ip.in_t"] + PACKET_IN_DECISION_DELAY_MIN * slots_duration_ms * 0.001
     )
 
     # Find the smallest index where the key is strictly greater than the adjusted time
-    idx = sched_sorted_dict.bisect_right(adjusted_time)
+    idx = sched_decid_sorted_dict.bisect_right(adjusted_time)
+
+    min_mac_in_t = min(
+        rlc_attempt["mac.in_t"]
+        for rlc_attempt in packet["rlc.attempts"]
+        if rlc_attempt["mac.in_t"] is not None and packet["rlc.attempts"] is not None
+    )
 
     # Check if the index is within bounds
-    if idx < len(sched_sorted_dict):
-        # Return the TBS value for the closest match after the adjusted packet time
-        if "tbs" in sched_sorted_dict[sched_sorted_dict.keys()[idx]]["cause"]:
-            result=sched_sorted_dict[sched_sorted_dict.keys()[idx]]["cause"]["tbs"]
+    if idx < len(sched_decid_sorted_dict):
+        sched_entry = sched_decid_sorted_dict[sched_decid_sorted_dict.keys()[idx]]
+        schedule_ts = sched_entry["schedule_ts"]
+
+        while min_mac_in_t < schedule_ts:
+            idx = idx - 1
+            sched_entry = sched_decid_sorted_dict[sched_decid_sorted_dict.keys()[idx]]
+            schedule_ts = sched_entry["schedule_ts"]
+
+        if idx >= 0:
+            if "tbs" in sched_entry["cause"]:
+                result=sched_entry["cause"]["tbs"]
+            else:
+                result=None
         else:
-            result=None
+            result = None
+                
         return result
     else:
         # Return None if there is no suitable TBS entry
