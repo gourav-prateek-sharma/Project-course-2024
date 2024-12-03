@@ -252,6 +252,14 @@ def get_tx_delay(packet):
 def get_segmentation_delay(packet):
     retx_delay = get_retx_delay(packet)
     tx_delay =  get_tx_delay(packet)
+    if tx_delay == None:
+        print(f"For packet(id={packet["id"]}), tx_delay == None!")
+    if retx_delay == None:
+        print(f"For packet(id={packet["id"]}), retx_delay == None!")
+    if packet['rlc.in_t'] ==None:
+        print(f"For packet(id={packet["id"]}), rlc.in_t == None!")
+    if packet["rlc.out_t"] == None:
+        print(f"For packet(id={packet["id"]}), rlc.out_t == None!")
     if tx_delay!=None and retx_delay!=None and packet['rlc.in_t']!=None and packet['rlc.out_t']!=None:
         return (packet['rlc.out_t']-packet['rlc.in_t'])*1000-tx_delay-retx_delay
     else:
