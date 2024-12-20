@@ -827,7 +827,7 @@ def plot_ccdf(delays, label, figsize=(10, 6), outlier=35, x_lim=50, ax=None):
 
     # Add grid and legend
     ax.grid(True,'minor')
-    ax.legend()
+    #ax.legend()
 
     return fig, ax
 
